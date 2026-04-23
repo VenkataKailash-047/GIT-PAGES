@@ -1,0 +1,279 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Weather</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a2980, #26d0ce);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 760px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2rem;
+      letter-spacing: 0.02em;
+    }
+
+    p.description {
+      margin: 0 0 24px;
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      outline: none;
+      font-size: 1rem;
+    }
+
+    button {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 14px;
+      background: #ffffff;
+      color: #1a2980;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      background: #f2f2f2;
+    }
+
+    .suggestions {
+      margin: 22px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .suggestions button {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    .suggestions button:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .weather {
+      margin-top: 28px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      padding: 20px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.45rem;
+    }
+
+    .temp {
+      font-size: 2.4rem;
+      margin: 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: #f0f7ff;
+      opacity: 0.95;
+    }
+
+    .message {
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>World Weather</h1>
+    <p class="description">Type one or more city names separated by commas to fetch current weather for cities across the world.</p>
+
+    <div class="controls">
+      <input id="city" type="text" placeholder="e.g. London, Tokyo, São Paulo">
+      <button onclick="getWeather()">Search</button>
+    </div>
+
+    <div class="suggestions">
+      <button onclick="fillCity('London')">London</button>
+      <button onclick="fillCity('New York')">New York</button>
+      <button onclick="fillCity('Tokyo')">Tokyo</button>
+      <button onclick="fillCity('Sydney')">Sydney</button>
+      <button onclick="fillCity('Paris')">Paris</button>
+      <button onclick="fillCity('Mumbai')">Mumbai</button>
+    </div>
+
+    <div id="weather" class="weather"></div>
+  </div>
+
+  <script>
+    const weatherCodeLabels = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Fog',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      56: 'Light freezing drizzle',
+      57: 'Dense freezing drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      66: 'Light freezing rain',
+      67: 'Heavy freezing rain',
+      71: 'Slight snow fall',
+      73: 'Moderate snow fall',
+      75: 'Heavy snow fall',
+      77: 'Snow grains',
+      80: 'Slight shower rain',
+      81: 'Moderate shower rain',
+      82: 'Violent shower rain',
+      85: 'Slight snow showers',
+      86: 'Heavy snow showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with hail',
+      99: 'Thunderstorm with heavy hail'
+    };
+
+    function fillCity(value) {
+      document.getElementById('city').value = value;
+      getWeather();
+    }
+
+    async function getWeather() {
+      const input = document.getElementById('city').value.trim();
+      const weatherDiv = document.getElementById('weather');
+      weatherDiv.innerHTML = '';
+
+      if (!input) {
+        weatherDiv.innerHTML = '<div class="message">Please enter one or more city names.</div>';
+        return;
+      }
+
+      const cities = input.split(',').map(city => city.trim()).filter(Boolean);
+      if (!cities.length) {
+        weatherDiv.innerHTML = '<div class="message">Please enter one or more city names.</div>';
+        return;
+      }
+
+      weatherDiv.innerHTML = `<div class="message">Loading weather for ${cities.length} city(ies)...</div>`;
+      const results = await Promise.all(cities.map(name => fetchCityWeather(name)));
+      weatherDiv.innerHTML = '';
+
+      const anySuccess = results.some(result => result.success);
+      if (!anySuccess) {
+        weatherDiv.innerHTML = '<div class="message">No cities were found. Try different spellings.</div>';
+        return;
+      }
+
+      results.forEach(result => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        if (!result.success) {
+          card.innerHTML = `<h2>${result.city}</h2><div class="meta">${result.error}</div>`;
+          weatherDiv.appendChild(card);
+          return;
+        }
+
+        card.innerHTML = `
+          <h2>${result.city}, ${result.country}</h2>
+          <p class="temp">${result.temp}°C</p>
+          <div class="meta">
+            <span>${result.description}</span>
+            <span>Wind ${result.wind} m/s</span>
+            <span>${result.time}</span>
+          </div>
+        `;
+        weatherDiv.appendChild(card);
+      });
+    }
+
+    async function fetchCityWeather(cityName) {
+      try {
+        const geocodeRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1`);
+        if (!geocodeRes.ok) throw new Error('Unable to geocode city');
+        const geocodeData = await geocodeRes.json();
+
+        if (!geocodeData.results || !geocodeData.results.length) {
+          return { success: false, city: cityName, error: 'City not found' };
+        }
+
+        const place = geocodeData.results[0];
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current_weather=true&timezone=auto`);
+        if (!weatherRes.ok) throw new Error('Unable to load weather');
+
+        const weatherData = await weatherRes.json();
+        const current = weatherData.current_weather;
+
+        return {
+          success: true,
+          city: place.name,
+          country: place.country,
+          temp: current.temperature,
+          wind: current.windspeed,
+          description: weatherCodeLabels[current.weathercode] || 'Unknown conditions',
+          time: new Date(current.time).toLocaleString('en-US', { hour12: false })
+        };
+      } catch (error) {
+        return { success: false, city: cityName, error: 'Unable to load weather' };
+      }
+    }
+  </script>
+</body>
+</html>
